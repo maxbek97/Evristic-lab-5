@@ -149,7 +149,7 @@ public class Gen_algorith
         return new_F_ch_i;
     }
 
-    private int get_feno_one(List<Gen> osob)
+    private int get_feno_one(List<Gen> osob, Boolean need_to_print = true)
     {
         int interval_len = 257 / matrix.N;
         //Для каждой особи генерируем двумерную матрицу фенотипа
@@ -165,8 +165,11 @@ public class Gen_algorith
             feno[intervalIndex].Add(el.task);
         }
 
-        print_counting_feno(feno);
-        Console.WriteLine();
+        if (need_to_print)
+        {
+            print_counting_feno(feno);
+            Console.WriteLine();
+        }
 
         return feno.Select(column => column.Sum()).ToList().Max();
     }
@@ -203,6 +206,14 @@ public class Gen_algorith
         List<Gen> outlast_potom = new List<Gen>();
         if (p_current_cross < P_cross)
         {
+            //Вывести генотип двух участвующих родителей
+            Console.WriteLine("Родитель 1");
+            print_counting_geno_one(parent_1);
+            int feno_parent = get_feno_one(parent_1, true);
+            Console.WriteLine();
+            Console.WriteLine("Родитель 2");
+            print_counting_geno_one(parent_2);
+
             //Выбираем точку разделения случайно
             int divide_point = rnd.Next(1, matrix.M);
             Console.WriteLine("Происходит скрещивание. Точка разделения - " + divide_point);
@@ -222,32 +233,56 @@ public class Gen_algorith
                     potom2.Add(parent_1[i]);
                 }
             }
+            //Берем двух родителей, если происходит кроссинговер, берем двух детей, детей подвергаем мутации. Получаем их фенотипы и выбираем лучшего среди 2 детей и левого родителя.
 
 
+            //Подвергаем мутации детей
+            var potom1_mut = mutation(potom1);
+            var potom2_mut = mutation(potom2);
             //
             Console.WriteLine("Первый потомок");
-            print_counting_geno_one(potom1);
-            int feno_first = get_feno_one(potom1);
+            print_counting_geno_one(potom1_mut);
+            int feno_first = get_feno_one(potom1_mut);
+            Console.WriteLine();
             Console.WriteLine("Второй потомок");
-            print_counting_geno_one(potom2);
-            int feno_second = get_feno_one(potom2);
-            //
-            //Расчитываем какой потомок выживает
-            if (feno_first < feno_second)
+            print_counting_geno_one(potom2_mut);
+            int feno_second = get_feno_one(potom2_mut);
+            Console.WriteLine();
+
+            List<(int, List<Gen>)> best_variant = new List<(int, List<Gen>)>
+            { (feno_parent, parent_1),
+                (feno_first, potom1_mut),
+                (feno_second, potom2_mut)
+            };
+
+            int minIndex = Enumerable.Range(0, best_variant.Count)
+                         .MinBy(i => best_variant[i].Item1);
+
+            switch (minIndex)
             {
-                Console.WriteLine("В следующее поколение переходит 1 потомок");
-                outlast_potom = mutation(potom1);
+                case 0:
+                    {
+                        Console.WriteLine("В следующее поколение переходит родитель");
+                        outlast_potom = parent_1;
+                        break;
+                    }
+                case 1:
+                    {
+                        Console.WriteLine("В следующее поколение переходит 1й потомок");
+                        outlast_potom = potom1_mut;
+                        break;
+                    }
+                case 2:
+                    {
+                        Console.WriteLine("В следующее поколение переходит 2й потомок");
+                        outlast_potom = potom2_mut;
+                        break;
+                    }
             }
-            else
-            {
-                Console.WriteLine("В следующее поколение переходит 2 потомок");
-                outlast_potom = mutation(potom2);
-            }
-            //И этот потомок перекрывает левого родителя, формируя новое поколение  
         }
         else {
             outlast_potom = parent_1;
-            Console.WriteLine("Кроссинговер не получился, в следующее поколение переходит 1 родитель");
+            Console.WriteLine("Кроссинговер не получился, в следующее поколение переходит 1 родитель\n");
         }
         return outlast_potom;
     }
@@ -261,6 +296,7 @@ public class Gen_algorith
             Console.WriteLine("Происходит мутация");
             //Выбираем случайный ген
             int gen_idx = rnd.Next(0, matrix.M);
+            Console.WriteLine("Мутирует " + gen_idx + "-й ген");
             string binaryString = Convert.ToString(new_potom[gen_idx].gen, 2).PadLeft(8, '0');
             Console.WriteLine(new_potom[gen_idx].gen + " = " + binaryString);
             //ВЫбираем случайную хромосому и инвертируем
@@ -271,8 +307,13 @@ public class Gen_algorith
 
             Console.WriteLine(number + " = " +Convert.ToString(number, 2).PadLeft(8, '0'));
             new_potom[gen_idx].gen = number;
+            get_feno_one(potom);
         }
-        return new_potom;
+        else
+        {
+            Console.WriteLine("Мутация не происходит\n");
+        }
+            return new_potom;
     }
 
     private List<List<Gen>> generate_new_gen()
@@ -298,26 +339,35 @@ public class Gen_algorith
     {
         Console.WriteLine("0 поколение");
         generate_begin();
-        print_F_ch_i(F_Ch_i);
-        int counter = 0;
-        while(counter < N_lim)
-        {
-            Console.WriteLine("Генерируется поколение " + number_o_generation);
-            var new_generation = generate_new_gen();
-            var new_F_ch_i = get_vector_survive(new_generation);
-            print_F_ch_i(new_F_ch_i);
+        string filePath = "output.txt"; // Путь к файлу
 
-            if (F_Ch_i.Min() == new_F_ch_i.Min())
+        // Используем StreamWriter для записи в файл
+        {
+            print_F_ch_i(F_Ch_i);
+            int counter = 0;
+            while (counter < N_lim)
             {
-                counter++;
+                StreamWriter writer = new StreamWriter(filePath, append: true);
+                Console.WriteLine("Генерируется поколение " + number_o_generation);
+                var new_generation = generate_new_gen();
+                Console.WriteLine("Сгенерировано поколение " + number_o_generation);
+                var new_F_ch_i = get_vector_survive(new_generation);
+                print_F_ch_i(new_F_ch_i);
+                writer.WriteLine(string.Join(",", new_F_ch_i) + " = " + new_F_ch_i.Min());
+                writer.Close();
+
+                if (F_Ch_i.Min() == new_F_ch_i.Min())
+                {
+                    counter++;
+                }
+                else
+                {
+                    counter = 0;
+                }
+                Ch_i = new_generation;
+                F_Ch_i = new_F_ch_i;
+                number_o_generation++;
             }
-            else
-            {
-                counter = 0;
-            }
-            Ch_i = new_generation;
-            F_Ch_i = new_F_ch_i;
-            number_o_generation++;
         }
 
     }
@@ -328,7 +378,7 @@ class lab5
     {
         var test = new Matrix(4, 11, 10, 20);
         test.print_matrix();
-        var test1 = new Gen_algorith(10, 10, 0.94, 0.03, test);
+        var test1 = new Gen_algorith(3, 10, 0.94, 0.7, test);
         test1.main_algorithm();
     }
 }

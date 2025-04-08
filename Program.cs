@@ -273,8 +273,6 @@ public class Gen_algorith
                 default:
                     {
                         Console.WriteLine("В следующее поколение переходит родитель");
-                        Console.WriteLine("КонтрольнАЯ ПРОВЕРКА!!!!!");
-                        get_feno_one(parent_1, true);
                         return parent_1;
                     }
             }
@@ -343,34 +341,35 @@ public class Gen_algorith
         StreamWriter writer = new StreamWriter(filePath, append: true);
         writer.WriteLine(0 + ") " +string.Join(",", F_Ch_i) + " = " + F_Ch_i.Min());
         writer.Close();
-        // Используем StreamWriter для записи в файл
-        {
-            print_F_ch_i(F_Ch_i);
-            int counter = 1;
-            while (counter < N_lim)
-            {
-                StreamWriter writer_cycle = new StreamWriter(filePath, append: true);
-                Console.WriteLine("Генерируется поколение " + number_o_generation);
-                var new_generation = generate_new_gen();
-                Console.WriteLine("Сгенерировано поколение " + number_o_generation);
-                var new_F_ch_i = get_vector_survive(new_generation);
-                print_F_ch_i(new_F_ch_i);
-                writer_cycle.WriteLine(number_o_generation + ") " + string.Join(",", new_F_ch_i) + " = " + new_F_ch_i.Min());
-                writer_cycle.Close();
 
-                if (F_Ch_i.Min() == new_F_ch_i.Min())
-                {
-                    counter++;
-                }
-                else
-                {
-                    counter = 1;
-                }
-                Ch_i = new_generation;
-                F_Ch_i = new_F_ch_i;
-                number_o_generation++;
+        print_F_ch_i(F_Ch_i);
+        int counter = 1;
+        while (counter < N_lim)
+        {
+            StreamWriter writer_cycle = new StreamWriter(filePath, append: true);
+            Console.WriteLine("Генерируется поколение " + number_o_generation);
+            var new_generation = generate_new_gen();
+            Console.WriteLine("Сгенерировано поколение " + number_o_generation);
+            var new_F_ch_i = get_vector_survive(new_generation);
+            print_F_ch_i(new_F_ch_i);
+            writer_cycle.WriteLine(number_o_generation + ") " + string.Join(",", new_F_ch_i) + " = " + new_F_ch_i.Min());
+            writer_cycle.Close();
+
+            if (F_Ch_i.Min() == new_F_ch_i.Min())
+            {
+                counter++;
             }
+            else
+            {
+                counter = 1;
+            }
+            Ch_i = new_generation;
+            F_Ch_i = new_F_ch_i;
+            number_o_generation++;
         }
+        var idx_min = F_Ch_i.IndexOf(F_Ch_i.Min());
+        Console.WriteLine("Правильный ответ");
+        get_feno_one(Ch_i[idx_min]);
     }
 }
 class lab5

@@ -249,11 +249,11 @@ public class Gen_algorith
             int feno_second = get_feno_one(potom2_mut);
             Console.WriteLine();
 
-            List<(int, List<Gen>)> best_variant = new List<(int, List<Gen>)>
-            { (feno_parent, parent_1),
+            List<(int, List<Gen>)> best_variant =
+            [ (feno_parent, parent_1),
                 (feno_first, potom1_mut),
                 (feno_second, potom2_mut)
-            };
+            ];
 
             int minIndex = Enumerable.Range(0, best_variant.Count)
                          .MinBy(i => best_variant[i].Item1);

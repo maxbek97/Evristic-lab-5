@@ -1,4 +1,6 @@
-﻿public class Gen
+﻿using System.Text;
+
+public class Gen
 {
     public int task { get; init; }
     public int gen { get; set; }
@@ -63,19 +65,27 @@ public class Gen_algorith
     double P_mutation { get; set; }
     int number_o_generation = 1;
 
-
     Matrix matrix { get; init; }
+
+    string logsDir = "Logs";
+    string fitnessFilePath;
 
 
     public Gen_algorith(int n_chr, int n_lim, double p_cross, double p_mutation, Matrix mt)
     {
-        //Console.WriteLine("Введите номер числа особей")
-        N_chr = n_chr; //Число особей
+        N_chr = n_chr;
         N_lim = n_lim;
         P_cross = p_cross;
         P_mutation = p_mutation;
         matrix = mt;
         F_Ch_i = new List<int>();
+
+        if (!Directory.Exists(logsDir))
+            Directory.CreateDirectory(logsDir);
+
+        fitnessFilePath = Path.Combine(logsDir, "fitness_log.txt");
+        if (File.Exists(fitnessFilePath))
+            File.Delete(fitnessFilePath);
     }
 
     private void generate_begin()
@@ -92,6 +102,19 @@ public class Gen_algorith
         }
         Ch_i = ch_i;
         F_Ch_i = get_vector_survive(Ch_i);
+    }
+    private void RedirectConsoleOutput(string fileName)
+    {
+        var fileStream = new FileStream(fileName, FileMode.Create, FileAccess.Write);
+        var streamWriter = new StreamWriter(fileStream, Encoding.UTF8) { AutoFlush = true };
+        Console.SetOut(streamWriter);
+    }
+
+    private void RestoreConsoleOutput()
+    {
+        var standardOutput = new StreamWriter(Console.OpenStandardOutput(), Encoding.UTF8) { AutoFlush = true };
+        Console.SetOut(standardOutput);
+        Console.OutputEncoding = Encoding.UTF8;
     }
 
     private void print_counting_feno(List<List<int>> feno)
@@ -210,9 +233,10 @@ public class Gen_algorith
             Console.WriteLine("Родитель 1");
             print_counting_geno_one(parent_1);
             int feno_parent = get_feno_one(parent_1, true);
-            Console.WriteLine();
+
             Console.WriteLine("Родитель 2");
             print_counting_geno_one(parent_2);
+            get_feno_one(parent_2, true);
 
             //Выбираем точку разделения случайно
             int divide_point = rnd.Next(1, matrix.M);
@@ -233,28 +257,30 @@ public class Gen_algorith
                     potom2.Add(parent_1[i]);
                 }
             }
-            //Берем двух родителей, если происходит кроссинговер, берем двух детей, детей подвергаем мутации. Получаем их фенотипы и выбираем лучшего среди 2 детей и левого родителя.
 
+            Console.WriteLine("\nПотомок 1");
+            print_counting_geno_one(potom1);
+            Console.WriteLine("\nПотомок 2");
+            print_counting_geno_one(potom2);
 
             //Подвергаем мутации детей
-            var potom1_mut = mutation(potom1);
-            var potom2_mut = mutation(potom2);
-            //
-            Console.WriteLine("Первый потомок");
+            double p_current_mutation = rnd.NextDouble();
+            var potom1_mut = mutation(potom1, p_current_mutation);
+            Console.WriteLine("Потомок 1 после возможной мутации");
             print_counting_geno_one(potom1_mut);
             int feno_first = get_feno_one(potom1_mut);
-            Console.WriteLine();
-            Console.WriteLine("Второй потомок");
+
+            var potom2_mut = mutation(potom2, p_current_mutation);
+            Console.WriteLine("Потомок 2 после возможной мутации");
             print_counting_geno_one(potom2_mut);
             int feno_second = get_feno_one(potom2_mut);
-            Console.WriteLine();
 
             List<(int, List<Gen>)> best_variant =
             [ (feno_parent, parent_1),
                 (feno_first, potom1_mut),
                 (feno_second, potom2_mut)
             ];
-
+            Console.WriteLine($"Левый родитель - {feno_parent}, Потомок 1 - {feno_first}, Потомок 2 - {feno_second}");
             int minIndex = Enumerable.Range(0, best_variant.Count)
                          .MinBy(i => best_variant[i].Item1);
 
@@ -284,10 +310,9 @@ public class Gen_algorith
         }
     }
 
-    private List<Gen> mutation(List<Gen> potom)
+    private List<Gen> mutation(List<Gen> potom, double p_current_mutation)
     {
         List<Gen> new_potom = potom.Select(g => new Gen(g.task, g.gen)).ToList();
-        double p_current_mutation = rnd.NextDouble();
         if (p_current_mutation < P_mutation)
         {
             Console.WriteLine("Происходит мутация");
@@ -304,7 +329,7 @@ public class Gen_algorith
 
             Console.WriteLine(number + " = " + Convert.ToString(number, 2).PadLeft(8, '0'));
             new_potom[gen_idx].gen = number;
-            get_feno_one(potom);
+            get_feno_one(potom, false);
         }
         else
         {
@@ -334,26 +359,37 @@ public class Gen_algorith
 
     public void main_algorithm()
     {
+        // Лог первого поколения (0)
+        string genLogPath = Path.Combine(logsDir, $"generation_0.txt");
+        RedirectConsoleOutput(genLogPath);
+
         Console.WriteLine("0 поколение");
         generate_begin();
 
-        string filePath = "output.txt"; // Путь к файлу
-        StreamWriter writer = new StreamWriter(filePath, append: true);
-        writer.WriteLine(0 + ") " +string.Join(",", F_Ch_i) + " = " + F_Ch_i.Min());
-        writer.Close();
+        File.AppendAllText(fitnessFilePath,
+            $"0) {string.Join(",", F_Ch_i)} = {F_Ch_i.Min()}\n", Encoding.UTF8);
 
         print_F_ch_i(F_Ch_i);
+
+        RestoreConsoleOutput();
+
         int counter = 1;
+
         while (counter < N_lim)
         {
-            StreamWriter writer_cycle = new StreamWriter(filePath, append: true);
-            Console.WriteLine("Генерируется поколение " + number_o_generation);
+            string genLogPathCycle = Path.Combine(logsDir, $"generation_{number_o_generation}.txt");
+            RedirectConsoleOutput(genLogPathCycle);
+
+            Console.WriteLine($"Генерируется поколение {number_o_generation}");
             var new_generation = generate_new_gen();
-            Console.WriteLine("Сгенерировано поколение " + number_o_generation);
+            Console.WriteLine($"Сгенерировано поколение {number_o_generation}");
             var new_F_ch_i = get_vector_survive(new_generation);
             print_F_ch_i(new_F_ch_i);
-            writer_cycle.WriteLine(number_o_generation + ") " + string.Join(",", new_F_ch_i) + " = " + new_F_ch_i.Min());
-            writer_cycle.Close();
+
+            File.AppendAllText(fitnessFilePath,
+                $"{number_o_generation}) {string.Join(",", new_F_ch_i)} = {new_F_ch_i.Min()}\n", Encoding.UTF8);
+
+            RestoreConsoleOutput();
 
             if (F_Ch_i.Min() == new_F_ch_i.Min())
             {
@@ -363,22 +399,52 @@ public class Gen_algorith
             {
                 counter = 1;
             }
+
             Ch_i = new_generation;
             F_Ch_i = new_F_ch_i;
             number_o_generation++;
         }
+
+        // Финальный вывод
+        Console.WriteLine("\nПравильный ответ:");
         var idx_min = F_Ch_i.IndexOf(F_Ch_i.Min());
-        Console.WriteLine("Правильный ответ");
         get_feno_one(Ch_i[idx_min]);
     }
 }
+
 class lab5
 {
     public static void Main()
     {
-        var test = new Matrix(4, 11, 10, 20);
+        Console.OutputEncoding = Encoding.UTF8;
+
+        Console.Write("Введите число процессоров N = ");
+        int N = Convert.ToInt16(Console.ReadLine());
+
+        Console.Write("\nВведите число задач M = ");
+        int M = Convert.ToInt16(Console.ReadLine());
+
+        Console.Write("\nВведите нижнюю границу T1 = ");
+        int T1 = Convert.ToInt16(Console.ReadLine());
+
+        Console.Write("\nВведите нижнюю границу T2 = ");
+        int T2 = Convert.ToInt16(Console.ReadLine());
+
+        Console.Write("\nВведите число особей N_chr = ");
+        int N_chr = Convert.ToInt16(Console.ReadLine());
+
+        Console.Write("\nВведите число повторений N_lim = ");
+        int N_lim = Convert.ToInt16(Console.ReadLine());
+
+        Console.Write("\nВведите вероятность кроссинговера P_cross = ");
+        double p_cross = Convert.ToDouble(Console.ReadLine());
+
+        Console.Write("\nВведите вероятность мутации P_mutation = ");
+        double p_mutation = Convert.ToDouble(Console.ReadLine());
+
+        var test = new Matrix(N, M, T1, T2);
         test.print_matrix();
-        var test1 = new Gen_algorith(10, 10, 0.94, 0.7, test);
+        var test1 = new Gen_algorith(N_chr, N_lim, p_cross, p_mutation, test);
         test1.main_algorithm();
     }
 }

@@ -82,11 +82,17 @@ public class Gen_algorith
 
         if (!Directory.Exists(logsDir))
             Directory.CreateDirectory(logsDir);
+        else
+        {
+            foreach (var file in Directory.GetFiles(logsDir))
+            {
+                File.Delete(file);
+            }
+        }
 
         fitnessFilePath = Path.Combine(logsDir, "fitness_log.txt");
-        if (File.Exists(fitnessFilePath))
-            File.Delete(fitnessFilePath);
     }
+
 
     private void generate_begin()
     {

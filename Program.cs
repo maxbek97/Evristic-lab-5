@@ -192,7 +192,16 @@ public class Gen_algorith
         foreach (var el in osob)
         {
             int intervalIndex = el.gen / interval_len;
-            feno[intervalIndex].Add(el.task);
+            if (intervalIndex >= matrix.N)
+            {
+                // Handle the error or skip this element
+                feno[matrix.N - 1].Add(el.task);
+            }
+            else
+            {
+
+                feno[intervalIndex].Add(el.task);
+            }
         }
 
         if (need_to_print)
@@ -232,6 +241,7 @@ public class Gen_algorith
     //При передаче второй родитель можно вычислить как список, из которого удаляем первого родителя, и случайно выбираем второго
     private List<Gen> cross_over(List<Gen> parent_1, List<Gen> parent_2)
     {
+        double p_current_mutation = rnd.NextDouble();
         double p_current_cross = rnd.NextDouble();
         if (p_current_cross < P_cross)
         {
@@ -270,7 +280,6 @@ public class Gen_algorith
             print_counting_geno_one(potom2);
 
             //Подвергаем мутации детей
-            double p_current_mutation = rnd.NextDouble();
             var potom1_mut = mutation(potom1, p_current_mutation);
             Console.WriteLine("Потомок 1 после возможной мутации");
             print_counting_geno_one(potom1_mut);
@@ -286,7 +295,7 @@ public class Gen_algorith
                 (feno_first, potom1_mut),
                 (feno_second, potom2_mut)
             ];
-            Console.WriteLine($"Левый родитель - {feno_parent}, Потомок 1 - {feno_first}, Потомок 2 - {feno_second}");
+            Console.WriteLine($"Левый родитель - {feno_parent}, Правый родитель - {get_feno_one(parent_2)}, Потомок 1 - {feno_first}, Потомок 2 - {feno_second}");
             int minIndex = Enumerable.Range(0, best_variant.Count)
                          .MinBy(i => best_variant[i].Item1);
 
@@ -311,8 +320,29 @@ public class Gen_algorith
         }
         else
         {
-            Console.WriteLine("Кроссинговер не получился, в следующее поколение переходит 1 родитель\n");
-            return parent_1;
+            Console.WriteLine("Кроссинговер не получился.\n");
+
+            Console.WriteLine("Родитель 1");
+            print_counting_geno_one(parent_1);
+            int feno_parent = get_feno_one(parent_1, true);
+
+
+            var parent1_mut = mutation(parent_1, p_current_mutation);
+            Console.WriteLine("Родитель после возможной мутации");
+            print_counting_geno_one(parent1_mut);
+            var parent1_mut_feno = get_feno_one(parent1_mut);
+            Console.WriteLine($"Левый родитель - {feno_parent}, После мутации - {parent1_mut_feno}");
+
+            if (feno_parent <= parent1_mut_feno)
+            {
+                Console.WriteLine("В следующее поколение переходит левый родитель");
+                return parent_1;
+            }
+            else
+            {
+                Console.WriteLine("В следующее поколение переходит мутировавший родитель");
+                return parent1_mut;
+            }
         }
     }
 
@@ -358,6 +388,7 @@ public class Gen_algorith
             }
 
             var idx = rnd.Next(sharp_osob.Count);
+            Console.WriteLine($"Генерируется {i + 1}я особь");
             new_generation.Add(cross_over(Ch_i[i], sharp_osob[idx]));
         }
         return new_generation;

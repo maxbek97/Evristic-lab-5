@@ -280,11 +280,16 @@ public class Gen_algorith
             print_counting_geno_one(potom2);
 
             //Подвергаем мутации детей
+            Console.WriteLine("Потомок 1 до возможной мутации");
+            get_feno_one(potom1);
             var potom1_mut = mutation(potom1, p_current_mutation);
             Console.WriteLine("Потомок 1 после возможной мутации");
             print_counting_geno_one(potom1_mut);
             int feno_first = get_feno_one(potom1_mut);
 
+
+            Console.WriteLine("Потомок 2 до возможной мутации");
+            get_feno_one(potom2);
             var potom2_mut = mutation(potom2, p_current_mutation);
             Console.WriteLine("Потомок 2 после возможной мутации");
             print_counting_geno_one(potom2_mut);
@@ -295,7 +300,7 @@ public class Gen_algorith
                 (feno_first, potom1_mut),
                 (feno_second, potom2_mut)
             ];
-            Console.WriteLine($"Левый родитель - {feno_parent}, Правый родитель - {get_feno_one(parent_2)}, Потомок 1 - {feno_first}, Потомок 2 - {feno_second}");
+            Console.WriteLine($"Левый родитель - {feno_parent}, Правый родитель - {get_feno_one(parent_2, false)}, Потомок 1 - {feno_first}, Потомок 2 - {feno_second}");
             int minIndex = Enumerable.Range(0, best_variant.Count)
                          .MinBy(i => best_variant[i].Item1);
 
